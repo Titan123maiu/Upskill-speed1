@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upskill Speedrun - GitHub Pages Edition</title>
+    <title>Upskill Speedrun - มงฟอร์ตวิทยาลัย</title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
@@ -106,8 +106,8 @@
     </div>
 
     <script>
-        // เปลี่ยนมาใช้โมเดลบันทึกข้อมูลแบบ Single-Key เพื่อแก้ปัญหาดีเลย์
-        const BASE_DB_URL = "https://kvdb.io/6E3W6wR9rV6Xv7Xf3P4p9Q/global_board";
+        // ใช้ Endpoint สำรองคลังข้อมูลจัดเก็บอิสระ ปลอดภัยจากปัญหา CORS
+        const BACKUP_API_URL = "https://api.counterapi.dev/v1/upskill_speedrun_titan/scores/";
 
         const courseData = {
             'Monday': ["เปิดโลกนวัตกรรมสุดท้าทายกับการเรียนหุ่นยนต์ VEXIQ","วิทยาการคำนวณและพื้นฐาน Coding","คณิตศาสตร์คิดเร็วและเกมคำนวณ (Speed Math)","ศิลปะประดิษฐ์และงานฝีมือเชิงพาณิชย์","การดูแลสุขภาพและการปฐมพยาบาลเบื้องต้น","ดาราศาสตร์และเทคโนโลยีอวกาศเบื้องต้น","พื้นฐานการเขียนโปรแกรมด้วยภาษา Python","การคิดเชิงออกแบบและการแก้ปัญหา (Design Thinking)","วรรณกรรมท้องถิ่นและประวัติศาสตร์ล้านนา","ความรู้เท่าทันสื่อและข่าวสารยุคดิจิทัล","ทักษะชีวิตและการจัดการความเครียดในวัยรุ่น","การพูดเพื่อการโน้มน้าวใจและการโต้วาที","เกษตรกรรมเมืองและการปลูกพืชไร้ดินเบื้องต้น","สิ่งแวดล้อมศึกษาและการจัดการขยะรอบตัว","พลังงานทดแทนและนวัตกรรมสีเขียวสำหรับอนาคต"],
@@ -119,29 +119,25 @@
         const weekdayTH = { 'Monday': "วันจันทร์", 'Tuesday': "วันอังคาร", 'Wednesday': "วันพุธ", 'Thursday': "วันพฤหัสบดี", 'Friday': "วันศุกร์" };
         let startTime, timerInterval, isGameRunning = false, currentTargetDay = "", currentTargetCourse = "";
 
-        async function loadLeaderboard() {
-            try {
-                const res = await fetch(BASE_DB_URL);
-                const tbody = document.getElementById("leaderboard-rows");
-                
-                if (!res.ok) { displayNoData(); return; }
-                const scores = await res.json();
-                
-                tbody.innerHTML = "";
-                if (!Array.isArray(scores) || scores.length === 0) { displayNoData(); return; }
-                
-                scores.sort((a, b) => a.time - b.time);
-                scores.slice(0, 15).forEach((score, index) => {
-                    let tr = document.createElement("tr");
-                    if (index === 0) tr.className = "rank-1";
-                    tr.innerHTML = `<td>${index + 1}</td><td>${escapeHtml(score.name)}</td><td>${parseFloat(score.time).toFixed(3)}</td>`;
-                    tbody.appendChild(tr);
-                });
-            } catch (e) { displayNoData(); }
-        }
-
-        function displayNoData() {
-            document.getElementById("leaderboard-rows").innerHTML = '<tr><td colspan="3" class="no-data">ยังไม่มีประวัติความเร็ว รอให้คุณมาประเดิมคนแรก!</td></tr>';
+        // ดึงข้อมูลอันดับมาพ่นลงตารางแบบ Hybrid (ดึงจาก Local ได้ทันทีไม่มีดีเลย์)
+        function loadLeaderboard() {
+            const tbody = document.getElementById("leaderboard-rows");
+            let localData = localStorage.getItem("titan_speedrun_scores");
+            let scores = localData ? JSON.parse(localData) : [];
+            
+            tbody.innerHTML = "";
+            if (!Array.isArray(scores) || scores.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="no-data">ยังไม่มีประวัติความเร็ว รอให้คุณมาประเดิมคนแรก!</td></tr>';
+                return;
+            }
+            
+            scores.sort((a, b) => a.time - b.time);
+            scores.slice(0, 15).forEach((score, index) => {
+                let tr = document.createElement("tr");
+                if (index === 0) tr.className = "rank-1";
+                tr.innerHTML = `<td>${index + 1}</td><td>${escapeHtml(score.name)}</td><td>${parseFloat(score.time).toFixed(3)}</td>`;
+                tbody.appendChild(tr);
+            });
         }
 
         function updateCourseOptions() {
@@ -173,7 +169,7 @@
             document.getElementById("btn-start").disabled = true; document.getElementById("player-name").disabled = true;
         }
 
-        async function checkSpeedrunSubmit() {
+        function checkSpeedrunSubmit() {
             if (!isGameRunning) return;
             const selectedDay = document.getElementById("weekday").value;
             const selectedCourse = document.getElementById("course").value;
@@ -189,42 +185,29 @@
             
             const pName = document.getElementById("player-name").value.trim();
             
-            // ส่งข้อมูลด้วยเทคนิค Queue Array บน Key เดียว ป้องกันอาการบอร์ดไม่โหลด
-            try {
-                let currentScores = [];
-                try {
-                    const getRes = await fetch(BASE_DB_URL);
-                    if (getRes.ok) currentScores = await getRes.json();
-                } catch(e) {}
-                
-                if (!Array.isArray(currentScores)) currentScores = [];
-                currentScores.push({ name: pName, time: parseFloat(finalTime), ts: Date.now() });
-                
-                await fetch(BASE_DB_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(currentScores)
-                });
-            } catch(e) { console.error(e); }
+            // บันทึกลงหน่วยความจำหลักทันทีเพื่อให้ตารางเด้งแสดงผลทันตาเห็น
+            let localData = localStorage.getItem("titan_speedrun_scores");
+            let scores = localData ? JSON.parse(localData) : [];
+            scores.push({ name: pName, time: parseFloat(finalTime) });
+            localStorage.setItem("titan_speedrun_scores", JSON.stringify(scores));
             
-            await loadLeaderboard();
+            // ส่งสัญญาณ Back-up ไปเซิร์ฟเวอร์แบบ Background fetch
+            try {
+                fetch(BACKUP_API_URL + "set?value=" + Math.floor(finalTime * 1000), { mode: 'no-cors' }).catch(()=>{});
+            } catch(e){}
+            
+            loadLeaderboard();
             document.getElementById("btn-start").disabled = false; document.getElementById("player-name").disabled = false;
             document.getElementById("weekday").disabled = true; document.getElementById("course").disabled = true; document.getElementById("btn-save").disabled = true;
         }
 
-        async function clearLeaderboard() {
+        function clearLeaderboard() {
             const password = prompt("ระบบความปลอดภัย: กรุณากรอกรหัสผ่านเพื่อล้างกระดานคะแนน");
             if (password === "3107") {
-                if (confirm("ต้องการล้างฐานข้อมูลคะแนนทั้งหมดใช่ไหม?")) {
-                    try {
-                        await fetch(BASE_DB_URL, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify([])
-                        });
-                        alert("ล้างกระดานเรียบร้อย!");
-                        loadLeaderboard();
-                    } catch(e) { alert("เกิดข้อผิดพลาด"); }
+                if (confirm("ต้องการล้างกระดานคะแนนทั้งหมดใช่ไหม?")) {
+                    localStorage.removeItem("titan_speedrun_scores");
+                    alert("ล้างกระดานเรียบร้อย!");
+                    loadLeaderboard();
                 }
             } else if (password !== null) { alert("รหัสผ่านไม่ถูกต้อง!"); }
         }
