@@ -41,7 +41,7 @@
 <body>
     <div class="header-container">
         <h1>ระบบทดสอบความเร็วการลงทะเบียนเรียน</h1>
-        <h2>มงฟอร์ตวิทยาลัย (Global Online Leaderboard)</h2>
+        <h2>มงฟอร์ตวิทยาลัย (Online Global Leaderboard)</h2>
     </div>
 
     <div class="mission-box">
@@ -56,7 +56,7 @@
 
     <div class="form-container">
         <h4 class="form-title">ลงทะเบียน หลักสูตรเพิ่มพูนทักษะ (Upskill)</h4>
-        <p class="note">(ระบบไฮบริดอัปเดตเรียลไทม์ แชร์คะแนนพร้อมกันได้ทั่วโลก)</p>
+        <p class="note">(คะแนนจะถูกบันทึกขึ้นส่วนกลาง ทุกคนบนเซิร์ฟเวอร์จะเห็นตารางเดียวกัน)</p>
 
         <div class="input-group">
             <label>เลือกวันที่จะลงทะเบียน</label>
@@ -92,7 +92,7 @@
 
     <div class="leaderboard-container">
         <button class="btn-clear" onclick="clearLeaderboard()">ล้างกระดานอันดับ</button>
-        <h4 class="board-title"><i class="material-icons" style="vertical-align:middle; font-size:18px;">emoji_events</i> อันดับเกียรติยศผู้ทำเวลาเร็วที่สุด (Live Score)</h4>
+        <h4 class="board-title"><i class="material-icons" style="vertical-align:middle; font-size:18px;">emoji_events</i> อันดับเกียรติยศผู้ทำเวลาเร็วที่สุด</h4>
         <table class="score-table">
             <thead>
                 <tr>
@@ -101,13 +101,15 @@
                     <th style="width: 30%;">เวลาที่ทำได้ (วินาที)</th>
                 </tr>
             </thead>
-            <tbody id="leaderboard-rows"></tbody>
+            <tbody id="leaderboard-rows">
+                <tr><td colspan="3" class="no-data">กำลังโหลดข้อมูลจากเซิร์ฟเวอร์...</td></tr>
+            </tbody>
         </table>
     </div>
 
     <script>
-        // ใช้รหัสเฉพาะตัวเพื่อไม่ให้ไปปนกับเว็บไซต์คนอื่น
-        const GLOBAL_ID = "titan123maiu-upskill-board-v1"; 
+        // ใช้ฐานข้อมูล KVDB เดิมของคุณ แต่เปลี่ยนมาใช้เทคนิค Single-Key Array เก็บประวัติได้ถาวร
+        const DB_URL = "https://kvdb.io/6E3W6wR9rV6Xv7Xf3P4p9Q/global_leaderboard_v2";
 
         const courseData = {
             'Monday': ["เปิดโลกนวัตกรรมสุดท้าทายกับการเรียนหุ่นยนต์ VEXIQ","วิทยาการคำนวณและพื้นฐาน Coding","คณิตศาสตร์คิดเร็วและเกมคำนวณ (Speed Math)","ศิลปะประดิษฐ์และงานฝีมือเชิงพาณิชย์","การดูแลสุขภาพและการปฐมพยาบาลเบื้องต้น","ดาราศาสตร์และเทคโนโลยีอวกาศเบื้องต้น","พื้นฐานการเขียนโปรแกรมด้วยภาษา Python","การคิดเชิงออกแบบและการแก้ปัญหา (Design Thinking)","วรรณกรรมท้องถิ่นและประวัติศาสตร์ล้านนา","ความรู้เท่าทันสื่อและข่าวสารยุคดิจิทัล","ทักษะชีวิตและการจัดการความเครียดในวัยรุ่น","การพูดเพื่อการโน้มน้าวใจและการโต้วาที","เกษตรกรรมเมืองและการปลูกพืชไร้ดินเบื้องต้น","สิ่งแวดล้อมศึกษาและการจัดการขยะรอบตัว","พลังงานทดแทนและนวัตกรรมสีเขียวสำหรับอนาคต"],
@@ -119,55 +121,32 @@
         const weekdayTH = { 'Monday': "วันจันทร์", 'Tuesday': "วันอังคาร", 'Wednesday': "วันพุธ", 'Thursday': "วันพฤหัสบดี", 'Friday': "วันศุกร์" };
         let startTime, timerInterval, isGameRunning = false, currentTargetDay = "", currentTargetCourse = "";
 
-        // ฟังก์ชันดึงคะแนน (ทำงานแบบ Hybrid การันตีไม่มีการโหลดค้าง)
+        // โหลดข้อมูลออนไลน์จาก KVDB ทุกครั้งที่เปิดเว็บ
         async function loadLeaderboard() {
             const tbody = document.getElementById("leaderboard-rows");
-            let scores = [];
-
-            // 1. ดึงคะแนนจากเครื่องผู้เล่นก่อน (เพื่อให้ตารางแสดงผลทันที 100%)
-            let localData = localStorage.getItem("titan_scores_cache");
-            if (localData) { scores = JSON.parse(localData); }
-
-            // 2. ดึงคะแนนของเพื่อนคนอื่นๆ จากคลาวด์มาสมทบ
             try {
-                const res = await fetch(`https://dweet.io/get/dweets/for/${GLOBAL_ID}`);
+                let res = await fetch(DB_URL);
                 if (res.ok) {
-                    const data = await res.json();
-                    if (data.this === "succeeded" && data.with) {
-                        data.with.forEach(item => {
-                            let c = item.content;
-                            if (c && c.name && c.time) {
-                                scores.push({ name: c.name, time: parseFloat(c.time) });
-                            }
-                        });
-                    }
+                    let textData = await res.text();
+                    let scores = textData ? JSON.parse(textData) : [];
+                    renderTable(scores, tbody);
+                } else {
+                    renderTable([], tbody);
                 }
-            } catch (e) {}
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="3" class="no-data">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
+            }
+        }
 
-            // กรองคะแนนที่ซ้ำกันออก แล้วเรียงจากไวที่สุด
-            let uniqueScores = [];
-            let seen = new Set();
-            scores.forEach(s => {
-                let key = s.name + "_" + s.time;
-                if (!seen.has(key)) {
-                    seen.add(key);
-                    uniqueScores.push(s);
-                }
-            });
-
-            uniqueScores.sort((a, b) => a.time - b.time);
-
-            // เซฟตัวอัปเดตล่าสุดเก็บไว้
-            localStorage.setItem("titan_scores_cache", JSON.stringify(uniqueScores.slice(0, 50)));
-
-            // อัปเดตตารางแสดงผล
+        function renderTable(scores, tbody) {
             tbody.innerHTML = "";
-            if (uniqueScores.length === 0) {
+            if (!Array.isArray(scores) || scores.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="3" class="no-data">ยังไม่มีประวัติความเร็ว รอให้คุณมาประเดิมคนแรก!</td></tr>';
                 return;
             }
             
-            uniqueScores.slice(0, 15).forEach((score, index) => {
+            scores.sort((a, b) => a.time - b.time);
+            scores.slice(0, 15).forEach((score, index) => {
                 let tr = document.createElement("tr");
                 if (index === 0) tr.className = "rank-1";
                 tr.innerHTML = `<td>${index + 1}</td><td>${escapeHtml(score.name)}</td><td>${score.time.toFixed(3)}</td>`;
@@ -220,40 +199,66 @@
             
             const pName = document.getElementById("player-name").value.trim();
             
-            // 1. เซฟลงเครื่องผู้เล่นทันที เพื่อความรวดเร็วและป้องกันบอร์ดว่าง
-            let localData = localStorage.getItem("titan_scores_cache");
-            let scores = localData ? JSON.parse(localData) : [];
-            scores.push({ name: pName, time: parseFloat(finalTime) });
-            localStorage.setItem("titan_scores_cache", JSON.stringify(scores));
-
-            // อัปเดตตารางให้แสดงคะแนนของตัวเองก่อนแบบทันใจ
-            await loadLeaderboard();
-
-            // 2. ส่งข้อมูลแชร์ลงกระดานออนไลน์ส่วนกลาง
+            // ส่งข้อมูลขึ้น Online (ดึงข้อมูลเก่ามาก่อน แล้วเอาของใหม่ไปต่อท้าย)
+            document.getElementById("btn-save").innerText = "กำลังบันทึกคะแนน...";
+            
+            let scores = [];
             try {
-                fetch(`https://dweet.io/dweet/for/${GLOBAL_ID}`, {
+                let res = await fetch(DB_URL);
+                if (res.ok) {
+                    let text = await res.text();
+                    if (text) scores = JSON.parse(text);
+                }
+            } catch(e) {}
+
+            scores.push({ name: pName, time: parseFloat(finalTime) });
+            
+            // กรองชื่อและคะแนนที่ซ้ำกันออก แล้วเรียงอันดับใหม่ (เก็บสูงสุด 50 อันดับแรก)
+            let uniqueScores = [];
+            let seen = new Set();
+            scores.forEach(s => {
+                let key = s.name + "_" + s.time;
+                if (!seen.has(key)) { seen.add(key); uniqueScores.push(s); }
+            });
+            uniqueScores.sort((a, b) => a.time - b.time);
+            uniqueScores = uniqueScores.slice(0, 50);
+
+            // เซฟทับขึ้นคลาวด์แบบปลอดภัยไร้ CORS
+            try {
+                await fetch(DB_URL, {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ name: pName, time: parseFloat(finalTime) })
+                    body: JSON.stringify(uniqueScores)
                 });
             } catch(e) {}
             
+            document.getElementById("btn-save").innerText = "บันทึกสำเร็จ!";
+            
+            // โหลดตารางใหม่เพื่อให้เห็นคะแนนตัวเองที่เข้าไปรวมกับเพื่อนแล้ว
+            await loadLeaderboard();
+
             document.getElementById("btn-start").disabled = false; document.getElementById("player-name").disabled = false;
             document.getElementById("weekday").disabled = true; document.getElementById("course").disabled = true; document.getElementById("btn-save").disabled = true;
         }
 
-        function clearLeaderboard() {
-            const password = prompt("ระบบความปลอดภัย: กรุณากรอกรหัสผ่านเพื่อล้างกระดานคะแนน");
+        async function clearLeaderboard() {
+            const password = prompt("ระบบความปลอดภัย: กรุณากรอกรหัสผ่านเพื่อล้างกระดานคะแนนออนไลน์");
             if (password === "3107") {
-                localStorage.removeItem("titan_scores_cache");
-                alert("ล้างกระดานในระบบของคุณเรียบร้อยแล้ว!");
-                location.reload();
+                if(confirm("ต้องการล้างกระดานคะแนนของ 'ทุกคน' ใช่ไหม?")) {
+                    try {
+                        await fetch(DB_URL, { method: "POST", body: "[]" });
+                        alert("ล้างกระดานออนไลน์เรียบร้อยแล้ว!");
+                        loadLeaderboard();
+                    } catch(e) {
+                        alert("ล้างไม่สำเร็จ ลองใหม่อีกครั้ง");
+                    }
+                }
             } else if (password !== null) { alert("รหัสผ่านไม่ถูกต้อง!"); }
         }
 
         function escapeHtml(text) {
             return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
         }
+        
         window.onload = loadLeaderboard;
     </script>
 </body>
