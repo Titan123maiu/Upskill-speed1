@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upskill Speedrun - GitHub Pages Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        body { font-family: 'Sarabun', sans-serif; background-color: #ffffff; margin: 0; padding: 20px; color: #000000; }
+        .header-container { text-align: center; border-bottom: 2px solid #cccccc; padding-bottom: 15px; margin-bottom: 20px; }
+        .header-container h1 { color: #002288; font-size: 22px; margin: 0 0 5px 0; font-weight: bold; }
+        .header-container h2 { color: #002288; font-size: 20px; margin: 0 0 5px 0; font-weight: bold; }
+        .mission-box { max-width: 610px; margin: 0 auto 20px auto; background-color: #e2f0d9; border: 2px solid #385723; padding: 15px; border-radius: 6px; text-align: center; }
+        .mission-title { color: #385723; font-size: 16px; font-weight: bold; margin-bottom: 5px; }
+        .target-command { font-size: 18px; color: #c00000; font-weight: bold; margin: 10px 0; min-height: 27px; }
+        .timer-display { font-size: 24px; font-weight: bold; color: #002060; margin: 5px 0; font-family: monospace; }
+        .form-container, .result-container, .leaderboard-container { max-width: 650px; margin: 0 auto; text-align: left; }
+        .form-title, .result-title, .board-title { color: #002288; font-size: 16px; font-weight: bold; margin: 15px 0 5px 0; }
+        .note { color: #ff3344; font-size: 13px; margin: 0 0 15px 0; }
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; font-size: 14px; font-weight: bold; margin-bottom: 5px; }
+        .input-name { width: 300px; height: 35px; padding: 0 10px; font-size: 15px; border: 1px solid #7f7f7f; border-radius: 4px; font-family: 'Sarabun'; }
+        .custom-select-wrapper { position: relative; width: 320px; }
+        .custom-select-wrapper select { width: 100%; height: 42px; background: #555555; color: #ffffff; border: none; padding: 0 40px 0 10px; font-size: 15px; cursor: pointer; appearance: none; border-radius: 4px; }
+        .custom-select-wrapper::after { content: "▼"; font-size: 12px; color: #ffffff; position: absolute; right: 0; top: 0; background: linear-gradient(to bottom, #444444, #222222); width: 45px; height: 42px; display: flex; align-items: center; justify-content: center; pointer-events: none; border-top-right-radius: 4px; border-bottom-right-radius: 4px; }
+        .btn-game { background: #002288; color: white; border: none; padding: 8px 15px; font-size: 14px; font-weight: bold; border-radius: 4px; cursor: pointer; margin-right: 5px; }
+        .btn-submit { background: linear-gradient(to bottom, #ffb347, #ff9f1a); color: #333333; border: 1px solid #e67e22; padding: 8px 18px; font-size: 14px; font-weight: bold; border-radius: 4px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .form-container::after { content: ""; display: block; border-bottom: 1px solid #dddddd; margin: 20px 0; }
+        .result_list { background-color: #005a43; color: #ffffff; padding: 10px 15px; margin-bottom: 6px; font-size: 15px; border-radius: 2px; }
+        .score-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 15px; }
+        .score-table th, .score-table td { border: 1px solid #dddddd; padding: 8px; text-align: center; }
+        .score-table th { background-color: #002288; color: white; }
+        .score-table tr:nth-child(even) { background-color: #f2f2f2; }
+        .rank-1 { font-weight: bold; color: #d4af37; background-color: #fff9e6 !important; }
+        .no-data { color: #888888; font-style: italic; }
+        .btn-clear { background: #cc0000; color: white; border: none; padding: 4px 10px; font-size: 12px; border-radius: 4px; cursor: pointer; float: right; margin-top: 15px; }
+        .txtRed { color: #ff3344; font-weight: bold; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="header-container">
+        <h1>ระบบทดสอบความเร็วการลงทะเบียนเรียน</h1>
+        <h2>มงฟอร์ตวิทยาลัย (GitHub Online Leaderboard)</h2>
+    </div>
+
+    <div class="mission-box">
+        <div class="mission-title"><i class="material-icons" style="vertical-align:middle; font-size:18px;">bolt</i> การประเมินผลความเร็ว</div>
+        <div class="target-command" id="mission-target">กรอกชื่ออะไรก็ได้ของคุณ แล้วกดเริ่มจับเวลา!</div>
+        <div class="timer-display" id="timer">0.000 วินาที</div>
+        <div style="margin-top: 10px;">
+            <input type="text" id="player-name" class="input-name" placeholder="ชื่อหรือสมญานามในการแข่ง...">
+            <button type="button" class="btn-game" id="btn-start" onclick="startGame()">เริ่มจับเวลา</button>
+        </div>
+    </div>
+
+    <div class="form-container">
+        <h4 class="form-title">ลงทะเบียน หลักสูตรเพิ่มพูนทักษะ (Upskill)</h4>
+        <p class="note">(ระบบเปิดออนไลน์ผ่าน GitHub Pages แชร์คะแนนข้ามคอมพิวเตอร์กันได้แล้ววันนี้)</p>
+
+        <div class="input-group">
+            <label>เลือกวันที่จะลงทะเบียน</label>
+            <div class="custom-select-wrapper">
+                <select id="weekday" onchange="updateCourseOptions()" disabled>
+                    <option value="" disabled selected></option>
+                    <option value="Monday">วันจันทร์</option>
+                    <option value="Tuesday">วันอังคาร</option>
+                    <option value="Wednesday">วันพุธ</option>
+                    <option value="Thursday">วันพฤหัสบดี</option>
+                    <option value="Friday">วันศุกร์</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label>เลือกรายวิชาที่จะลงทะเบียน</label>
+            <div class="custom-select-wrapper">
+                <select id="course" disabled>
+                    <option value="" disabled selected>-- กรุณาเลือกวันก่อน --</option>
+                </select>
+            </div>
+        </div>
+
+        <button type="button" class="btn-submit" id="btn-save" onclick="checkSpeedrunSubmit()" disabled>ยืนยัน / บันทึก</button>
+        <div id="response_txt" style="margin-top: 10px;"></div>
+    </div>
+
+    <div class="result-container">
+        <h4 class="result-title">รายวิชาที่ลงทะเบียนสำเร็จในรอบนี้</h4>
+        <div id="result_list"></div>
+    </div>
+
+    <div class="leaderboard-container">
+        <button class="btn-clear" onclick="clearLeaderboard()">ล้างกระดานอันดับ</button>
+        <h4 class="board-title"><i class="material-icons" style="vertical-align:middle; font-size:18px;">emoji_events</i> อันดับเกียรติยศผู้ทำเวลาเร็วที่สุดระดับประเทศ (Live Score)</h4>
+        <table class="score-table">
+            <thead>
+                <tr>
+                    <th style="width: 15%;">อันดับ</th>
+                    <th style="width: 55%;">ชื่อ / นามแฝง</th>
+                    <th style="width: 30%;">เวลาที่ทำได้ (วินาที)</th>
+                </tr>
+            </thead>
+            <tbody id="leaderboard-rows"></tbody>
+        </table>
+    </div>
+
+    <script>
+        // เซ็ตติ้ง API ส่วนกลางสำหรับแชร์ดาต้าเบส (ใช้ฟรีร่วมกันผ่านเซิร์ฟเวอร์คลาวด์เปิด)
+        const _sbU = "https://wzsnwunfofbyhffivmke.supabase.co";
+        const _sbK = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6c253dW5mb2ZieWhmZml2bWtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTYwMzA4MDAsImV4cCI6MjAzMTYwNjgwMH0.1_Rk6Vclx9NfDq9vYtM8z6Fm1a8Y6-9w_D-gP3z8aFk";
+        const _db = supabase.createClient(_sbU, _sbK);
+
+        const courseData = {
+            'Monday': ["เปิดโลกนวัตกรรมสุดท้าทายกับการเรียนหุ่นยนต์ VEXIQ","วิทยาการคำนวณและพื้นฐาน Coding","คณิตศาสตร์คิดเร็วและเกมคำนวณ (Speed Math)","ศิลปะประดิษฐ์และงานฝีมือเชิงพาณิชย์","การดูแลสุขภาพและการปฐมพยาบาลเบื้องต้น","ดาราศาสตร์และเทคโนโลยีอวกาศเบื้องต้น","พื้นฐานการเขียนโปรแกรมด้วยภาษา Python","การคิดเชิงออกแบบและการแก้ปัญหา (Design Thinking)","วรรณกรรมท้องถิ่นและประวัติศาสตร์ล้านนา","ความรู้เท่าทันสื่อและข่าวสารยุคดิจิทัล","ทักษะชีวิตและการจัดการความเครียดในวัยรุ่น","การพูดเพื่อการโน้มน้าวใจและการโต้วาที","เกษตรกรรมเมืองและการปลูกพืชไร้ดินเบื้องต้น","สิ่งแวดล้อมศึกษาและการจัดการขยะรอบตัว","พลังงานทดแทนและนวัตกรรมสีเขียวสำหรับอนาคต"],
+            'Tuesday': ["ฟุตซอล MONTFORT","บาสเกตบอลชายยอดนักชู้ต","แบดมินตันเพื่อการแข่งขันและการออกกำลังกาย","เทเบิลเทนนิสและทักษะการสะท้อนกลับขั้นสูง","ว่ายน้ำเพื่อการกู้ชีพและการพัฒนาสรีระ","วอลเลย์บอลขั้นพื้นฐานและการเล่นเป็นทีม","หมากรุกไทยและกลยุทธ์ตารางกระดาน","กรีฑาและวิทยาศาสตร์การวิ่งเบื้องต้น","ยิมนาสติกพื้นฐานและการยืดเหยียดกล้ามเนื้อ","ศิลปะการป้องกันตัวและยูโดขั้นต้น","แฮนด์บอลสนุกคิดและทักษะการเคลื่อนไหว","สปอร์ตพจนานุกรมและศัพท์อังกฤษการกีฬา","โยคะเพื่อสมาธิและการปรับสมดุลร่างกาย","ผู้นำนันทนาการและกิจกรรมค่ายจำลอง","การวิเคราะห์แผนการเล่นและสถิติกีฬาสากล"],
+            'Wednesday': ["ดนตรีสากลร่วมสมัย (Pop-Rock Band)","ศิลปะการออกแบบและวาดภาพการ์ตูนคอมมิก","การขับร้องประสานเสียงระดับโรงเรียน","ถ่ายภาพดิจิทัลและการจัดแสงเบื้องต้นด้วยสมาร์ทโฟน","นาฏศิลป์และการสื่อสารวัฒนธรรมร่วมสมัย","ดนตรีไทยและเครื่องสายประยุกต์","ประติมากรรมและการปั้นโมเดลสามมิติด้วยดิน","ทฤษฎีดนตรีสากลและพื้นฐานการแกะโน้ต","จิตรกรรมสีน้ำและเทคนิคการระบายสีทิวทัศน์","การออกแบบกราฟิกเบื้องต้นด้วย Canva","ภาพยนตร์ศึกษาและการเขียนบทหนังสั้น","การแสดงเบื้องต้นและการเข้าสังคมสร้างสรรค์","วงดนตรีโยธวาทิตและเครื่องเป่าขั้นต้น","ศิลปะการพับกระดาษและโอริกามิสร้างสรรค์","สตรีทแดนซ์และพื้นฐานการเต้นบีบอย/ฮิปฮอป"],
+            'Thursday': ["E-SPORT Gaming & Team Management","บอร์ดเกมเพื่อการฝึกคิดเชิงกลยุทธ์และจิตวิทยา","ภาษาญี่ปุ่นพื้นฐานและบทสนทนาในชีวิตประจำวัน","ภาษาจีนเพื่อการสื่อสารและการพาณิชย์ย่อย","ภาษาเกาหลีเบื้องต้นและวัฒนธรรมสมัยนิยม","ภาษาอังกฤษผ่านเพลงสากลและภาพยนตร์ยอดนิยม","ภาษาฝรั่งเศสเบื้องต้นเพื่อการเดินทางและการท่องเที่ยว","ภาษาเยอรมันสนุกคิดและวัฒนธรรมยุโรป","การเขียนเชิงสร้างสรรค์และการเล่าเรื่อง (Storytelling)","ทักษะการสื่อสารข้ามวัฒนธรรมในยุคโลกาภิวัตน์","การแปลภาษาเบื้องต้นและคำศัพท์ร่วมสมัย","วรรณคดีเปรียบเทียบและการวิเคราะห์ตัวละคร","ภาษาและวัฒนธรรมอาเซียนเพื่อการเชื่อมโยง","การอ่านจับใจความเร็วสูงและการสรุปความอัจฉริยะ","กลยุทธ์การเรียนภาษาต่างประเทศด้วยตนเองผ่านแอปพลิเคชัน"],
+            'Friday': ["Figma + AI : เปลี่ยนไอเดียเป็นแอพจริงในพริบตา","การสร้างสรรค์ Content Creator และจริยธรรมสื่อดิจิทัล","วิทยาศาสตร์การประกอบอาหารและเบเกอรี่เบื้องต้น","การเพาะเลี้ยงและการอนุรักษ์พันธุกรรมพืชท้องถิ่น","รอบรู้เรื่องการออมและการลงทุนฉบับเยาวชนสตาร์ทอัพ","การเขียนโค้ดและพัฒนาเว็บเพจเบื้องต้นด้วย HTML/CSS","ปัญญาประดิษฐ์ (AI) และจริยธรรมการใช้งานในชีวิตประจำวัน","การสร้างโมเดลจำลอง 3D และเครื่องพิมพ์สามมิติ","วิทยาศาสตร์ในครัวเรือนและการทำผลิตภัณฑ์เคมีใช้เอง","พื้นฐานการเป็นบล็อกเกอร์ท่องเที่ยวและรีวิวสินค้า","การจัดการเงินส่วนบุคคลและภาษีน่ารู้สำหรับวัยรุ่น","โครงงานวิทยาศาสตร์และนวัตกรรมเพื่อชุมชน","การตลาดดิจิทัลและการซื้อขายสินค้าออนไลน์ขั้นต้น","เครื่องมือสืบค้นข้อมูลและเทคนิคสารสนเทศขั้นสูง","การวิเคราะห์ข้อมูลเบื้องต้นด้วยโปรแกรมตารางคำนวณ (Excel)"]
+        };
+        const weekdayTH = { 'Monday': "วันจันทร์", 'Tuesday': "วันอังคาร", 'Wednesday': "วันพุธ", 'Thursday': "วันพฤหัสบดี", 'Friday': "วันศุกร์" };
+        let startTime, timerInterval, isGameRunning = false, currentTargetDay = "", currentTargetCourse = "";
+
+        async function loadLeaderboard() {
+            try {
+                const { data, error } = await _db.from('scores').select('*').order('time', { ascending: true }).limit(50);
+                if (error) throw error;
+                const tbody = document.getElementById("leaderboard-rows");
+                tbody.innerHTML = "";
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" class="no-data">ยังไม่มีบันทึกประวัติความเร็ว รอให้คุณมาทำลายสถิติเป็นคนแรก!</td></tr>';
+                    return;
+                }
+                data.forEach((score, index) => {
+                    let tr = document.createElement("tr");
+                    if (index === 0) tr.className = "rank-1";
+                    tr.innerHTML = `<td>${index + 1}</td><td>${score.name}</td><td>${score.time.toFixed(3)}</td>`;
+                    tbody.appendChild(tr);
+                });
+            } catch (e) { console.error("Error loading scores:", e); }
+        }
+
+        function updateCourseOptions() {
+            const daySelect = document.getElementById("weekday").value;
+            const courseSelect = document.getElementById("course");
+            courseSelect.innerHTML = '<option value="" disabled selected>-- เลือกรายวิชา --</option>';
+            if (courseData[daySelect]) {
+                courseData[daySelect].forEach(name => {
+                    let opt = document.createElement("option"); opt.value = name; opt.text = name;
+                    courseSelect.appendChild(opt);
+                });
+            }
+        }
+
+        function startGame() {
+            const nameInput = document.getElementById("player-name").value.trim();
+            if (!nameInput) { alert("พิมพ์ชื่ออะไรก็ได้ของคุณลงในช่องก่อนกดเริ่มนะครับ!"); return; }
+            const days = Object.keys(courseData);
+            currentTargetDay = days[Math.floor(Math.random() * days.length)];
+            currentTargetCourse = courseData[currentTargetDay][Math.floor(Math.random() * courseData[currentTargetDay].length)];
+            document.getElementById("mission-target").innerHTML = `เป้าหมาย: หา <span style="color:#002060;">${weekdayTH[currentTargetDay]}</span> วิชา <span style="color:#002060;">"${currentTargetCourse}"</span>`;
+            document.getElementById("weekday").disabled = false; document.getElementById("course").disabled = false; document.getElementById("btn-save").disabled = false;
+            document.getElementById("weekday").value = ""; document.getElementById("course").innerHTML = '<option value="" disabled selected>-- กรุณาเลือกวันก่อน --</option>';
+            document.getElementById("result_list").innerHTML = ""; document.getElementById("response_txt").innerHTML = "";
+            isGameRunning = true; startTime = performance.now();
+            timerInterval = setInterval(() => {
+                document.getElementById("timer").innerText = ((performance.now() - startTime) / 1000).toFixed(3) + " วินาที";
+            }, 13);
+            document.getElementById("btn-start").disabled = true; document.getElementById("player-name").disabled = true;
+        }
+
+        async function checkSpeedrunSubmit() {
+            if (!isGameRunning) return;
+            const selectedDay = document.getElementById("weekday").value;
+            const selectedCourse = document.getElementById("course").value;
+            if (selectedDay !== currentTargetDay || selectedCourse !== currentTargetCourse) {
+                document.getElementById("response_txt").innerHTML = '<div class="txtRed">คุณเลือกผิดวิชาหรือผิดวัน! ความเร็วยังคงนับต่อ!</div>';
+                return;
+            }
+            clearInterval(timerInterval); isGameRunning = false;
+            let finalTime = ((performance.now() - startTime) / 1000).toFixed(3);
+            document.getElementById("timer").innerText = finalTime + " วินาที";
+            document.getElementById("response_txt").innerHTML = `<div style="color:#00885a; font-weight:bold;">🎯 ถูกต้อง! เวลาของคุณคือ ${finalTime} วินาที</div>`;
+            document.getElementById("result_list").innerHTML = `<div class="result_list">${weekdayTH[selectedDay]} - ${selectedCourse}</div>`;
+            
+            try {
+                await _db.from('scores').insert([{ name: document.getElementById("player-name").value.trim(), time: parseFloat(finalTime) }]);
+            } catch(e) { console.error(e); }
+            
+            loadLeaderboard();
+            document.getElementById("btn-start").disabled = false; document.getElementById("player-name").disabled = false;
+            document.getElementById("weekday").disabled = true; document.getElementById("course").disabled = true; document.getElementById("btn-save").disabled = true;
+        }
+
+        async function clearLeaderboard() {
+            const password = prompt("ระบบความปลอดภัย: กรุณากรอกรหัสผ่านเพื่อยืนยันการล้างกระดานคะแนนทั้งหมด");
+            if (password === "3107") {
+                if (confirm("คุณแน่ใจนะว่าต้องการล้างฐานข้อมูลคะแนนออนไลน์ทั้งหมด?")) {
+                    try {
+                        const { error } = await _db.from('scores').delete().neq('id', 0);
+                        if (error) throw error;
+                        alert("ล้างกระดานออนไลน์เรียบร้อย!");
+                        loadLeaderboard();
+                    } catch(e) { alert("เกิดข้อผิดพลาดในการลบข้อมูล"); console.error(e); }
+                }
+            } else if (password !== null) { alert("รหัสผ่านไม่ถูกต้อง!"); }
+        }
+        window.onload = loadLeaderboard;
+    </script>
+</body>
+</html>
