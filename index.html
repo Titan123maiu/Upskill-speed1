@@ -37,14 +37,11 @@
         .btn-clear { background: #cc0000; color: white; border: none; padding: 4px 10px; font-size: 12px; border-radius: 4px; cursor: pointer; float: right; margin-top: 15px; }
         .txtRed { color: #ff3344; font-weight: bold; }
     </style>
-
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 </head>
 <body>
     <div class="header-container">
         <h1>ระบบทดสอบความเร็วการลงทะเบียนเรียน</h1>
-        <h2>มงฟอร์ตวิทยาลัย (Firebase Realtime Server)</h2>
+        <h2>มงฟอร์ตวิทยาลัย (Local Engine Standalone)</h2>
     </div>
 
     <div class="mission-box">
@@ -59,7 +56,7 @@
 
     <div class="form-container">
         <h4 class="form-title">ลงทะเบียน หลักสูตรเพิ่มพูนทักษะ (Upskill)</h4>
-        <p class="note">(ระบบ Firebase Cloud Sync: คะแนนจะซิงก์ข้ามเครื่องทันทีแบบ Realtime 100%)</p>
+        <p class="note">(ระบบฐานข้อมูลออฟไลน์ในเครื่อง: การันตีบันทึกติด 100% ไม่โดนบล็อกชัวร์)</p>
 
         <div class="input-group">
             <label>เลือกวันที่จะลงทะเบียน</label>
@@ -95,7 +92,7 @@
 
     <div class="leaderboard-container">
         <button class="btn-clear" onclick="clearLeaderboard()">ล้างกระดานอันดับ</button>
-        <h4 class="board-title"><i class="material-icons" style="vertical-align:middle; font-size:18px;">emoji_events</i> อันดับเกียรติยศผู้ทำเวลาเร็วที่สุด (Global Live Ranking)</h4>
+        <h4 class="board-title"><i class="material-icons" style="vertical-align:middle; font-size:18px;">emoji_events</i> อันดับเกียรติยศผู้ทำเวลาเร็วที่สุด (Top 15 Ranking)</h4>
         <table class="score-table">
             <thead>
                 <tr>
@@ -104,19 +101,12 @@
                     <th style="width: 30%;">เวลาที่ทำได้ (วินาที)</th>
                 </tr>
             </thead>
-            <tbody id="leaderboard-rows">
-                <tr><td colspan="3" class="no-data">กำลังเชื่อมต่อฐานข้อมูลระบบคลาวด์...</td></tr>
-            </tbody>
+            <tbody id="leaderboard-rows"></tbody>
         </table>
     </div>
 
     <script>
-        // กำหนดค่าคอนฟิกเชื่อมต่อ Firebase (ใช้งานได้ทันที ไม่ติด CORS ชัวร์)
-        const firebaseConfig = {
-            databaseURL: "https://titan-speedrun-board-default-rtdb.asia-southeast1.firebasedatabase.app/"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
+        const LOCAL_STORAGE_KEY = "montfort_speedrun_scores";
 
         const courseData = {
             'Monday': ["เปิดโลกนวัตกรรมสุดท้าทายกับการเรียนหุ่นยนต์ VEXIQ","วิทยาการคำนวณและพื้นฐาน Coding","คณิตศาสตร์คิดเร็วและเกมคำนวณ (Speed Math)","ศิลปะประดิษฐ์และงานฝีมือเชิงพาณิชย์","การดูแลสุขภาพและการปฐมพยาบาลเบื้องต้น","ดาราศาสตร์และเทคโนโลยีอวกาศเบื้องต้น","พื้นฐานการเขียนโปรแกรมด้วยภาษา Python","การคิดเชิงออกแบบและการแก้ปัญหา (Design Thinking)","วรรณกรรมท้องถิ่นและประวัติศาสตร์ล้านนา","ความรู้เท่าทันสื่อและข่าวสารยุคดิจิทัล","ทักษะชีวิตและการจัดการความเครียดในวัยรุ่น","การพูดเพื่อการโน้มน้าวใจและการโต้วาที","เกษตรกรรมเมืองและการปลูกพืชไร้ดินเบื้องต้น","สิ่งแวดล้อมศึกษาและการจัดการขยะรอบตัว","พลังงานทดแทนและนวัตกรรมสีเขียวสำหรับอนาคต"],
@@ -128,18 +118,15 @@
         const weekdayTH = { 'Monday': "วันจันทร์", 'Tuesday': "วันอังคาร", 'Wednesday': "วันพุธ", 'Thursday': "วันพฤหัสบดี", 'Friday': "วันศุกร์" };
         let startTime, timerInterval, isGameRunning = false, currentTargetDay = "", currentTargetCourse = "";
 
-        // ฟังก์ชันดึงข้อมูลแบบ Realtime Listener (ใครอัปเดตปุ๊บ ทุกจอเปลี่ยนตามทันที!)
-        database.ref("scores").on("value", (snapshot) => {
+        // ฟังก์ชันดึงคะแนนที่เก็บบันทึกไว้ในเครื่องขึ้นมาแสดงผลทันที
+        function loadLeaderboard() {
             const tbody = document.getElementById("leaderboard-rows");
             tbody.innerHTML = "";
-            
+
             let scores = [];
-            if (snapshot.exists()) {
-                const data = snapshot.val();
-                // แปลง Object ของ Firebase ให้กลายเป็น Array
-                for (let key in data) {
-                    scores.push(data[key]);
-                }
+            let localCache = localStorage.getItem(LOCAL_STORAGE_KEY);
+            if (localCache) {
+                try { scores = JSON.parse(localCache); } catch(e) { scores = []; }
             }
 
             if (scores.length === 0) {
@@ -147,17 +134,17 @@
                 return;
             }
 
-            // เรียงจากเวลาน้อยที่สุดขึ้นก่อน
+            // เรียงจากคนที่ทำเวลาน้อยที่สุด (เร็วที่สุด) ขึ้นก่อน
             scores.sort((a, b) => a.time - b.time);
 
-            // แสดง 15 อันดับแรก
+            // นำข้อมูล TOP 15 มา Render ลงตาราง
             scores.slice(0, 15).forEach((score, index) => {
                 let tr = document.createElement("tr");
                 if (index === 0) tr.className = "rank-1";
                 tr.innerHTML = `<td>${index + 1}</td><td>${escapeHtml(score.name)}</td><td>${parseFloat(score.time).toFixed(3)}</td>`;
                 tbody.appendChild(tr);
             });
-        });
+        }
 
         function updateCourseOptions() {
             const daySelect = document.getElementById("weekday").value;
@@ -204,28 +191,39 @@
             
             const pName = document.getElementById("player-name").value.trim();
             
-            // ยิงคะแนนขึ้นระบบคลาวด์ Firebase (บันทึกเสร็จปุ๊บ ทุกจอจะดึงไปโชว์พร้อมกันทันที)
-            database.ref("scores").push({
+            // ดึงข้อมูลเก่าในเครื่องมา แล้วเพิ่มคะแนนรอบปัจจุบันเข้าไป
+            let localCache = localStorage.getItem(LOCAL_STORAGE_KEY);
+            let currentScores = localCache ? JSON.parse(localCache) : [];
+            currentScores.push({
                 name: pName,
-                time: parseFloat(finalTime),
-                timestamp: Date.now()
+                time: parseFloat(finalTime)
             });
+            
+            // เซฟบันทึกกลับลงหน่วยความจำของบราวเซอร์ตัวเครื่องทันที
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(currentScores));
+            
+            // อัปเดตตารางคะแนนทันที
+            loadLeaderboard();
 
             document.getElementById("btn-start").disabled = false; document.getElementById("player-name").disabled = false;
             document.getElementById("weekday").disabled = true; document.getElementById("course").disabled = true; document.getElementById("btn-save").disabled = true;
         }
 
         function clearLeaderboard() {
-            const password = prompt("ระบบความปลอดภัย: กรุณากรอกรหัสผ่านเพื่อล้างกระดานคะแนนออนไลน์");
+            const password = prompt("ระบบความปลอดภัย: กรุณากรอกรหัสผ่านเพื่อล้างกระดานคะแนน");
             if (password === "3107") {
-                database.ref("scores").remove();
-                alert("ล้างกระดานคะแนนออนไลน์สำเร็จ!");
+                localStorage.removeItem(LOCAL_STORAGE_KEY);
+                alert("ล้างกระดานคะแนนในเครื่องสำเร็จ!");
+                loadLeaderboard();
             } else if (password !== null) { alert("รหัสผ่านไม่ถูกต้อง!"); }
         }
 
         function escapeHtml(text) {
             return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
         }
+
+        // โหลดคะแนนขึ้นมาโชว์ทันทีเมื่อเปิดหน้าเว็บ
+        window.onload = loadLeaderboard;
     </script>
 </body>
 </html>
