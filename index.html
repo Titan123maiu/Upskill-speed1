@@ -34,14 +34,13 @@
         .score-table tr:nth-child(even) { background-color: #f2f2f2; }
         .rank-1 { font-weight: bold; color: #d4af37; background-color: #fff9e6 !important; }
         .no-data { color: #888888; font-style: italic; }
-        .btn-clear { background: #cc0000; color: white; border: none; padding: 4px 10px; font-size: 12px; border-radius: 4px; cursor: pointer; float: right; margin-top: 15px; }
         .txtRed { color: #ff3344; font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="header-container">
         <h1>ระบบทดสอบความเร็วการลงทะเบียนเรียน</h1>
-        <h2>มงฟอร์ตวิทยาลัย (Local Engine v2)</h2>
+        <h2>มงฟอร์ตวิทยาลัย (Google Sheets Cloud Sync)</h2>
     </div>
 
     <div class="mission-box">
@@ -56,7 +55,7 @@
 
     <div class="form-container">
         <h4 class="form-title">ลงทะเบียน หลักสูตรเพิ่มพูนทักษะ (Upskill)</h4>
-        <p class="note">(ระบบบันทึกความปลอดภัยสูง: เล่นบนคอมหรือมือถือ คะแนนขึ้นตารางถาวรชัวร์ 100%)</p>
+        <p class="note">(ระบบออนไลน์เชื่อมต่อ Google Sheets: ใช้ได้ทุกมือถือและคอมพิวเตอร์ 100%)</p>
 
         <div class="input-group">
             <label>เลือกวันที่จะลงทะเบียน</label>
@@ -91,8 +90,7 @@
     </div>
 
     <div class="leaderboard-container">
-        <button class="btn-clear" onclick="clearLeaderboard()">ล้างกระดานอันดับ</button>
-        <h4 class="board-title"><i class="material-icons" style="vertical-align:middle; font-size:18px;">emoji_events</i> อันดับเกียรติยศผู้ทำเวลาเร็วที่สุดบนเครื่องนี้ (Top 15 Ranking)</h4>
+        <h4 class="board-title"><i class="material-icons" style="vertical-align:middle; font-size:18px;">emoji_events</i> อันดับเกียรติยศผู้ทำเวลาเร็วที่สุดสากล (Top 15 Live)</h4>
         <table class="score-table">
             <thead>
                 <tr>
@@ -101,12 +99,15 @@
                     <th style="width: 30%;">เวลาที่ทำได้ (วินาที)</th>
                 </tr>
             </thead>
-            <tbody id="leaderboard-rows"></tbody>
+            <tbody id="leaderboard-rows">
+                <tr><td colspan="3" class="no-data">กำลังโหลดข้อมูลอันดับจาก Google ชีต...</td></tr>
+            </tbody>
         </table>
     </div>
 
     <script>
-        const STORAGE_KEY = "mv_speedrun_v2_storage";
+        // ลิงก์ API เชื่อมตรงเข้าสู่ Google Sheets
+        const API_URL = "https://sheetdb.io/api/v1/29rt4zja5oxhh";
 
         const courseData = {
             'Monday': ["เปิดโลกนวัตกรรมสุดท้าทายกับการเรียนหุ่นยนต์ VEXIQ","วิทยาการคำนวณและพื้นฐาน Coding","คณิตศาสตร์คิดเร็วและเกมคำนวณ (Speed Math)","ศิลปะประดิษฐ์และงานฝีมือเชิงพาณิชย์","การดูแลสุขภาพและการปฐมพยาบาลเบื้องต้น","ดาราศาสตร์และเทคโนโลยีอวกาศเบื้องต้น","พื้นฐานการเขียนโปรแกรมด้วยภาษา Python","การคิดเชิงออกแบบและการแก้ปัญหา (Design Thinking)","วรรณกรรมท้องถิ่นและประวัติศาสตร์ล้านนา","ความรู้เท่าทันสื่อและข่าวสารยุคดิจิทัล","ทักษะชีวิตและการจัดการความเครียดในวัยรุ่น","การพูดเพื่อการโน้มน้าวใจและการโต้วาที","เกษตรกรรมเมืองและการปลูกพืชไร้ดินเบื้องต้น","สิ่งแวดล้อมศึกษาและการจัดการขยะรอบตัว","พลังงานทดแทนและนวัตกรรมสีเขียวสำหรับอนาคต"],
@@ -118,30 +119,41 @@
         const weekdayTH = { 'Monday': "วันจันทร์", 'Tuesday': "วันอังคาร", 'Wednesday': "วันพุธ", 'Thursday': "วันพฤหัสบดี", 'Friday': "วันศุกร์" };
         let startTime, timerInterval, isGameRunning = false, currentTargetDay = "", currentTargetCourse = "";
 
-        // ฟังก์ชันดึงคะแนนที่ล็อกไว้ในเครื่องขึ้นมาโชว์ถาวร
-        function loadLeaderboard() {
-            const tbody = document.getElementById("leaderboard-rows");
-            tbody.innerHTML = "";
+        // ฟังก์ชันดึงคะแนนออนไลน์จาก Google Sheets
+        function fetchLeaderboard() {
+            fetch(API_URL)
+            .then(res => res.json())
+            .then(data => {
+                const tbody = document.getElementById("leaderboard-rows");
+                tbody.innerHTML = "";
+                
+                let scores = [];
+                if (Array.isArray(data)) {
+                    data.forEach(item => {
+                        if(item.name && item.time) {
+                            scores.push({ name: item.name, time: parseFloat(item.time) });
+                        }
+                    });
+                }
 
-            let scores = [];
-            let localCache = localStorage.getItem(STORAGE_KEY);
-            if (localCache) {
-                try { scores = JSON.parse(localCache); } catch(e) { scores = []; }
-            }
+                if (scores.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" class="no-data">ยังไม่มีประวัติความเร็ว รอให้คุณมาประเดิมคนแรก!</td></tr>';
+                    return;
+                }
 
-            if (scores.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" class="no-data">ยังไม่มีประวัติความเร็ว รอให้คุณมาประเดิมคนแรก!</td></tr>';
-                return;
-            }
+                // เรียงเวลาจากน้อยไปมาก (เร็วที่สุดขึ้นก่อน)
+                scores.sort((a, b) => a.time - b.time);
 
-            // เรียงลำดับจากเวลาที่เร็วที่สุด
-            scores.sort((a, b) => a.time - b.time);
-
-            scores.slice(0, 15).forEach((score, index) => {
-                let tr = document.createElement("tr");
-                if (index === 0) tr.className = "rank-1";
-                tr.innerHTML = `<td>${index + 1}</td><td>${escapeHtml(score.name)}</td><td>${parseFloat(score.time).toFixed(3)}</td>`;
-                tbody.appendChild(tr);
+                // แสดงผล Top 15 บนกระดาน
+                scores.slice(0, 15).forEach((score, index) => {
+                    let tr = document.createElement("tr");
+                    if (index === 0) tr.className = "rank-1";
+                    tr.innerHTML = `<td>${index + 1}</td><td>${escapeHtml(score.name)}</td><td>${score.time.toFixed(3)}</td>`;
+                    tbody.appendChild(tr);
+                });
+            })
+            .catch(err => {
+                document.getElementById("leaderboard-rows").innerHTML = '<tr><td colspan="3" class="no-data">加 โหลดข้อมูลล้มเหลว กรุณารีเฟรชหน้าเว็บอีกครั้ง</td></tr>';
             });
         }
 
@@ -185,42 +197,37 @@
             clearInterval(timerInterval); isGameRunning = false;
             let finalTime = ((performance.now() - startTime) / 1000).toFixed(3);
             document.getElementById("timer").innerText = finalTime + " วินาที";
-            document.getElementById("response_txt").innerHTML = `<div style="color:#00885a; font-weight:bold;">🎯 ถูกต้อง! เวลาของคุณคือ ${finalTime} วินาที</div>`;
+            document.getElementById("response_txt").innerHTML = `<div style="color:#00885a; font-weight:bold;">🎯 ถูกต้อง! กำลังบันทึกสถิติของคุณ...</div>`;
             document.getElementById("result_list").innerHTML = `<div class="result_list">${weekdayTH[selectedDay]} - ${selectedCourse}</div>`;
             
             const pName = document.getElementById("player-name").value.trim();
             
-            let localCache = localStorage.getItem(STORAGE_KEY);
-            let currentScores = localCache ? JSON.parse(localCache) : [];
-            currentScores.push({
-                name: pName,
-                time: parseFloat(finalTime)
+            // ส่งข้อมูลบันทึกลง Google Sheets ทันที
+            fetch(API_URL, {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    data: [
+                        { name: pName, time: parseFloat(finalTime) }
+                    ]
+                })
+            })
+            .then(() => {
+                document.getElementById("response_txt").innerHTML = `<div style="color:#00885a; font-weight:bold;">🎯 บันทึกสถิติสำเร็จ! เวลาของคุณคือ ${finalTime} วินาที</div>`;
+                setTimeout(fetchLeaderboard, 500);
             });
-            
-            // ล็อกข้อมูลลงหน่วยความจำเบราเซอร์เครื่องถาวร ไม่โดนล้างตอนรีเฟรช
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(currentScores));
-            
-            loadLeaderboard();
 
             document.getElementById("btn-start").disabled = false; document.getElementById("player-name").disabled = false;
             document.getElementById("weekday").disabled = true; document.getElementById("course").disabled = true; document.getElementById("btn-save").disabled = true;
-        }
-
-        function clearLeaderboard() {
-            const password = prompt("ระบบความปลอดภัย: กรุณากรอกรหัสผ่านเพื่อล้างกระดานคะแนน");
-            if (password === "3107") {
-                localStorage.removeItem(STORAGE_KEY);
-                alert("ล้างกระดานคะแนนในเครื่องสำเร็จ!");
-                loadLeaderboard();
-            } else if (password !== null) { alert("รหัสผ่านไม่ถูกต้อง!"); }
         }
 
         function escapeHtml(text) {
             return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
         }
 
-        // โหลดคะแนนขึ้นหน้าจอทันทีเมื่อเปิดเว็บหรือรีเฟรช
-        window.onload = loadLeaderboard;
+        window.onload = fetchLeaderboard;
     </script>
 </body>
 </html>
