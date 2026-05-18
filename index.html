@@ -56,7 +56,7 @@
 
     <div class="form-container">
         <h4 class="form-title">ลงทะเบียน หลักสูตรเพิ่มพูนทักษะ (Upskill)</h4>
-        <p class="note">(ระบบเปิดออนไลน์ผ่าน GitHub Pages แชร์คะแนนข้ามคอมพิวเตอร์กันได้แล้ววันนี้)</p>
+        <p class="note">(ระบบออนไลน์เชื่อมต่อส่วนกลาง คะแนนอัปเดตแบบเรียลไทม์ทันที)</p>
 
         <div class="input-group">
             <label>เลือกวันที่จะลงทะเบียน</label>
@@ -106,8 +106,8 @@
     </div>
 
     <script>
-        // บันทึกผ่านฐานข้อมูลแยกรายคีย์เพื่อความเสถียรสูงสุด
-        const BASE_DB_URL = "https://kvdb.io/6E3W6wR9rV6Xv7Xf3P4p9Q/";
+        // เปลี่ยนมาใช้โมเดลบันทึกข้อมูลแบบ Single-Key เพื่อแก้ปัญหาดีเลย์
+        const BASE_DB_URL = "https://kvdb.io/6E3W6wR9rV6Xv7Xf3P4p9Q/global_board";
 
         const courseData = {
             'Monday': ["เปิดโลกนวัตกรรมสุดท้าทายกับการเรียนหุ่นยนต์ VEXIQ","วิทยาการคำนวณและพื้นฐาน Coding","คณิตศาสตร์คิดเร็วและเกมคำนวณ (Speed Math)","ศิลปะประดิษฐ์และงานฝีมือเชิงพาณิชย์","การดูแลสุขภาพและการปฐมพยาบาลเบื้องต้น","ดาราศาสตร์และเทคโนโลยีอวกาศเบื้องต้น","พื้นฐานการเขียนโปรแกรมด้วยภาษา Python","การคิดเชิงออกแบบและการแก้ปัญหา (Design Thinking)","วรรณกรรมท้องถิ่นและประวัติศาสตร์ล้านนา","ความรู้เท่าทันสื่อและข่าวสารยุคดิจิทัล","ทักษะชีวิตและการจัดการความเครียดในวัยรุ่น","การพูดเพื่อการโน้มน้าวใจและการโต้วาที","เกษตรกรรมเมืองและการปลูกพืชไร้ดินเบื้องต้น","สิ่งแวดล้อมศึกษาและการจัดการขยะรอบตัว","พลังงานทดแทนและนวัตกรรมสีเขียวสำหรับอนาคต"],
@@ -121,33 +121,23 @@
 
         async function loadLeaderboard() {
             try {
-                const res = await fetch(`${BASE_DB_URL}?values=true&format=json`);
+                const res = await fetch(BASE_DB_URL);
                 const tbody = document.getElementById("leaderboard-rows");
                 
                 if (!res.ok) { displayNoData(); return; }
-                const rawData = await res.json();
+                const scores = await res.json();
                 
-                let scores = [];
-                rawData.forEach(item => {
-                    if(item[0].startsWith("run_")) {
-                        try {
-                            let parsed = JSON.parse(item[1]);
-                            if(parsed.name && parsed.time) scores.push(parsed);
-                        } catch(e){}
-                    }
-                });
-
                 tbody.innerHTML = "";
-                if (scores.length === 0) { displayNoData(); return; }
+                if (!Array.isArray(scores) || scores.length === 0) { displayNoData(); return; }
                 
                 scores.sort((a, b) => a.time - b.time);
-                scores.slice(0, 50).forEach((score, index) => {
+                scores.slice(0, 15).forEach((score, index) => {
                     let tr = document.createElement("tr");
                     if (index === 0) tr.className = "rank-1";
-                    tr.innerHTML = `<td>${index + 1}</td><td>${score.name}</td><td>${parseFloat(score.time).toFixed(3)}</td>`;
+                    tr.innerHTML = `<td>${index + 1}</td><td>${escapeHtml(score.name)}</td><td>${parseFloat(score.time).toFixed(3)}</td>`;
                     tbody.appendChild(tr);
                 });
-            } catch (e) { console.error(e); displayNoData(); }
+            } catch (e) { displayNoData(); }
         }
 
         function displayNoData() {
@@ -198,18 +188,26 @@
             document.getElementById("result_list").innerHTML = `<div class="result_list">${weekdayTH[selectedDay]} - ${selectedCourse}</div>`;
             
             const pName = document.getElementById("player-name").value.trim();
-            const recordKey = "run_" + encodeURIComponent(pName) + "_" + Date.now();
-            const recordValue = JSON.stringify({ name: pName, time: parseFloat(finalTime) });
-
+            
+            // ส่งข้อมูลด้วยเทคนิค Queue Array บน Key เดียว ป้องกันอาการบอร์ดไม่โหลด
             try {
-                await fetch(BASE_DB_URL + recordKey, {
+                let currentScores = [];
+                try {
+                    const getRes = await fetch(BASE_DB_URL);
+                    if (getRes.ok) currentScores = await getRes.json();
+                } catch(e) {}
+                
+                if (!Array.isArray(currentScores)) currentScores = [];
+                currentScores.push({ name: pName, time: parseFloat(finalTime), ts: Date.now() });
+                
+                await fetch(BASE_DB_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: recordValue
+                    body: JSON.stringify(currentScores)
                 });
             } catch(e) { console.error(e); }
             
-            setTimeout(loadLeaderboard, 400);
+            await loadLeaderboard();
             document.getElementById("btn-start").disabled = false; document.getElementById("player-name").disabled = false;
             document.getElementById("weekday").disabled = true; document.getElementById("course").disabled = true; document.getElementById("btn-save").disabled = true;
         }
@@ -219,20 +217,20 @@
             if (password === "3107") {
                 if (confirm("ต้องการล้างฐานข้อมูลคะแนนทั้งหมดใช่ไหม?")) {
                     try {
-                        const res = await fetch(`${BASE_DB_URL}?values=true&format=json`);
-                        if (res.ok) {
-                            const rawData = await res.json();
-                            for (let item of rawData) {
-                                if (item[0].startsWith("run_")) {
-                                    await fetch(BASE_DB_URL + item[0], { method: 'DELETE' });
-                                }
-                            }
-                        }
+                        await fetch(BASE_DB_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify([])
+                        });
                         alert("ล้างกระดานเรียบร้อย!");
                         loadLeaderboard();
-                    } catch(e) { alert("เกิดข้อผิดพลาด"); console.error(e); }
+                    } catch(e) { alert("เกิดข้อผิดพลาด"); }
                 }
             } else if (password !== null) { alert("รหัสผ่านไม่ถูกต้อง!"); }
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
         }
         window.onload = loadLeaderboard;
     </script>
