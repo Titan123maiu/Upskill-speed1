@@ -41,7 +41,7 @@
 <body>
     <div class="header-container">
         <h1>ระบบทดสอบความเร็วการลงทะเบียนเรียน</h1>
-        <h2>มงฟอร์ตวิทยาลัย (GitHub Online Leaderboard)</h2>
+        <h2>มงฟอร์ตวิทยาลัย (Global Online Leaderboard)</h2>
     </div>
 
     <div class="mission-box">
@@ -56,7 +56,7 @@
 
     <div class="form-container">
         <h4 class="form-title">ลงทะเบียน หลักสูตรเพิ่มพูนทักษะ (Upskill)</h4>
-        <p class="note">(ระบบออนไลน์เชื่อมต่อส่วนกลาง คะแนนอัปเดตแบบเรียลไทม์ทันที)</p>
+        <p class="note">(ระบบไฮบริดอัปเดตเรียลไทม์ แชร์คะแนนพร้อมกันได้ทั่วโลก)</p>
 
         <div class="input-group">
             <label>เลือกวันที่จะลงทะเบียน</label>
@@ -106,8 +106,8 @@
     </div>
 
     <script>
-        // ใช้ Endpoint สำรองคลังข้อมูลจัดเก็บอิสระ ปลอดภัยจากปัญหา CORS
-        const BACKUP_API_URL = "https://api.counterapi.dev/v1/upskill_speedrun_titan/scores/";
+        // ใช้รหัสเฉพาะตัวเพื่อไม่ให้ไปปนกับเว็บไซต์คนอื่น
+        const GLOBAL_ID = "titan123maiu-upskill-board-v1"; 
 
         const courseData = {
             'Monday': ["เปิดโลกนวัตกรรมสุดท้าทายกับการเรียนหุ่นยนต์ VEXIQ","วิทยาการคำนวณและพื้นฐาน Coding","คณิตศาสตร์คิดเร็วและเกมคำนวณ (Speed Math)","ศิลปะประดิษฐ์และงานฝีมือเชิงพาณิชย์","การดูแลสุขภาพและการปฐมพยาบาลเบื้องต้น","ดาราศาสตร์และเทคโนโลยีอวกาศเบื้องต้น","พื้นฐานการเขียนโปรแกรมด้วยภาษา Python","การคิดเชิงออกแบบและการแก้ปัญหา (Design Thinking)","วรรณกรรมท้องถิ่นและประวัติศาสตร์ล้านนา","ความรู้เท่าทันสื่อและข่าวสารยุคดิจิทัล","ทักษะชีวิตและการจัดการความเครียดในวัยรุ่น","การพูดเพื่อการโน้มน้าวใจและการโต้วาที","เกษตรกรรมเมืองและการปลูกพืชไร้ดินเบื้องต้น","สิ่งแวดล้อมศึกษาและการจัดการขยะรอบตัว","พลังงานทดแทนและนวัตกรรมสีเขียวสำหรับอนาคต"],
@@ -119,23 +119,58 @@
         const weekdayTH = { 'Monday': "วันจันทร์", 'Tuesday': "วันอังคาร", 'Wednesday': "วันพุธ", 'Thursday': "วันพฤหัสบดี", 'Friday': "วันศุกร์" };
         let startTime, timerInterval, isGameRunning = false, currentTargetDay = "", currentTargetCourse = "";
 
-        // ดึงข้อมูลอันดับมาพ่นลงตารางแบบ Hybrid (ดึงจาก Local ได้ทันทีไม่มีดีเลย์)
-        function loadLeaderboard() {
+        // ฟังก์ชันดึงคะแนน (ทำงานแบบ Hybrid การันตีไม่มีการโหลดค้าง)
+        async function loadLeaderboard() {
             const tbody = document.getElementById("leaderboard-rows");
-            let localData = localStorage.getItem("titan_speedrun_scores");
-            let scores = localData ? JSON.parse(localData) : [];
-            
+            let scores = [];
+
+            // 1. ดึงคะแนนจากเครื่องผู้เล่นก่อน (เพื่อให้ตารางแสดงผลทันที 100%)
+            let localData = localStorage.getItem("titan_scores_cache");
+            if (localData) { scores = JSON.parse(localData); }
+
+            // 2. ดึงคะแนนของเพื่อนคนอื่นๆ จากคลาวด์มาสมทบ
+            try {
+                const res = await fetch(`https://dweet.io/get/dweets/for/${GLOBAL_ID}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.this === "succeeded" && data.with) {
+                        data.with.forEach(item => {
+                            let c = item.content;
+                            if (c && c.name && c.time) {
+                                scores.push({ name: c.name, time: parseFloat(c.time) });
+                            }
+                        });
+                    }
+                }
+            } catch (e) {}
+
+            // กรองคะแนนที่ซ้ำกันออก แล้วเรียงจากไวที่สุด
+            let uniqueScores = [];
+            let seen = new Set();
+            scores.forEach(s => {
+                let key = s.name + "_" + s.time;
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    uniqueScores.push(s);
+                }
+            });
+
+            uniqueScores.sort((a, b) => a.time - b.time);
+
+            // เซฟตัวอัปเดตล่าสุดเก็บไว้
+            localStorage.setItem("titan_scores_cache", JSON.stringify(uniqueScores.slice(0, 50)));
+
+            // อัปเดตตารางแสดงผล
             tbody.innerHTML = "";
-            if (!Array.isArray(scores) || scores.length === 0) {
+            if (uniqueScores.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="3" class="no-data">ยังไม่มีประวัติความเร็ว รอให้คุณมาประเดิมคนแรก!</td></tr>';
                 return;
             }
             
-            scores.sort((a, b) => a.time - b.time);
-            scores.slice(0, 15).forEach((score, index) => {
+            uniqueScores.slice(0, 15).forEach((score, index) => {
                 let tr = document.createElement("tr");
                 if (index === 0) tr.className = "rank-1";
-                tr.innerHTML = `<td>${index + 1}</td><td>${escapeHtml(score.name)}</td><td>${parseFloat(score.time).toFixed(3)}</td>`;
+                tr.innerHTML = `<td>${index + 1}</td><td>${escapeHtml(score.name)}</td><td>${score.time.toFixed(3)}</td>`;
                 tbody.appendChild(tr);
             });
         }
@@ -169,7 +204,7 @@
             document.getElementById("btn-start").disabled = true; document.getElementById("player-name").disabled = true;
         }
 
-        function checkSpeedrunSubmit() {
+        async function checkSpeedrunSubmit() {
             if (!isGameRunning) return;
             const selectedDay = document.getElementById("weekday").value;
             const selectedCourse = document.getElementById("course").value;
@@ -185,18 +220,24 @@
             
             const pName = document.getElementById("player-name").value.trim();
             
-            // บันทึกลงหน่วยความจำหลักทันทีเพื่อให้ตารางเด้งแสดงผลทันตาเห็น
-            let localData = localStorage.getItem("titan_speedrun_scores");
+            // 1. เซฟลงเครื่องผู้เล่นทันที เพื่อความรวดเร็วและป้องกันบอร์ดว่าง
+            let localData = localStorage.getItem("titan_scores_cache");
             let scores = localData ? JSON.parse(localData) : [];
             scores.push({ name: pName, time: parseFloat(finalTime) });
-            localStorage.setItem("titan_speedrun_scores", JSON.stringify(scores));
-            
-            // ส่งสัญญาณ Back-up ไปเซิร์ฟเวอร์แบบ Background fetch
+            localStorage.setItem("titan_scores_cache", JSON.stringify(scores));
+
+            // อัปเดตตารางให้แสดงคะแนนของตัวเองก่อนแบบทันใจ
+            await loadLeaderboard();
+
+            // 2. ส่งข้อมูลแชร์ลงกระดานออนไลน์ส่วนกลาง
             try {
-                fetch(BACKUP_API_URL + "set?value=" + Math.floor(finalTime * 1000), { mode: 'no-cors' }).catch(()=>{});
-            } catch(e){}
+                fetch(`https://dweet.io/dweet/for/${GLOBAL_ID}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name: pName, time: parseFloat(finalTime) })
+                });
+            } catch(e) {}
             
-            loadLeaderboard();
             document.getElementById("btn-start").disabled = false; document.getElementById("player-name").disabled = false;
             document.getElementById("weekday").disabled = true; document.getElementById("course").disabled = true; document.getElementById("btn-save").disabled = true;
         }
@@ -204,11 +245,9 @@
         function clearLeaderboard() {
             const password = prompt("ระบบความปลอดภัย: กรุณากรอกรหัสผ่านเพื่อล้างกระดานคะแนน");
             if (password === "3107") {
-                if (confirm("ต้องการล้างกระดานคะแนนทั้งหมดใช่ไหม?")) {
-                    localStorage.removeItem("titan_speedrun_scores");
-                    alert("ล้างกระดานเรียบร้อย!");
-                    loadLeaderboard();
-                }
+                localStorage.removeItem("titan_scores_cache");
+                alert("ล้างกระดานในระบบของคุณเรียบร้อยแล้ว!");
+                location.reload();
             } else if (password !== null) { alert("รหัสผ่านไม่ถูกต้อง!"); }
         }
 
