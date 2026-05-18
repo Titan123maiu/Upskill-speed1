@@ -13,7 +13,7 @@
         .header-container h2 { color: #002288; font-size: 20px; margin: 0 0 5px 0; font-weight: bold; }
         .mission-box { max-width: 610px; margin: 0 auto 20px auto; background-color: #e2f0d9; border: 2px solid #385723; padding: 15px; border-radius: 6px; text-align: center; }
         .mission-title { color: #385723; font-size: 16px; font-weight: bold; margin-bottom: 5px; }
-        .target-command { font-size: 18px; color: #c00000; font-weight: bold; margin: 10px 0; min-height: 27px; }
+        .target-command { font-size: 18px; color: #c00000; font-weight: bold; margin: 10px 0; min-height: 27px; line-height: 1.4; }
         .timer-display { font-size: 24px; font-weight: bold; color: #002060; margin: 5px 0; font-family: monospace; }
         .form-container, .result-container, .leaderboard-container { max-width: 650px; margin: 0 auto; text-align: left; }
         .form-title, .result-title, .board-title { color: #002288; font-size: 16px; font-weight: bold; margin: 15px 0 5px 0; }
@@ -21,8 +21,8 @@
         .input-group { margin-bottom: 15px; }
         .input-group label { display: block; font-size: 14px; font-weight: bold; margin-bottom: 5px; }
         .input-name { width: 300px; height: 35px; padding: 0 10px; font-size: 15px; border: 1px solid #7f7f7f; border-radius: 4px; font-family: 'Sarabun'; }
-        .custom-select-wrapper { position: relative; width: 320px; }
-        .custom-select-wrapper select { width: 100%; height: 42px; background: #555555; color: #ffffff; border: none; padding: 0 40px 0 10px; font-size: 15px; cursor: pointer; appearance: none; border-radius: 4px; }
+        .custom-select-wrapper { position: relative; width: 450px; max-width: 100%; }
+        .custom-select-wrapper select { width: 100%; height: 42px; background: #555555; color: #ffffff; border: none; padding: 0 40px 0 10px; font-size: 14px; cursor: pointer; appearance: none; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .custom-select-wrapper::after { content: "▼"; font-size: 12px; color: #ffffff; position: absolute; right: 0; top: 0; background: linear-gradient(to bottom, #444444, #222222); width: 45px; height: 42px; display: flex; align-items: center; justify-content: center; pointer-events: none; border-top-right-radius: 4px; border-bottom-right-radius: 4px; }
         .btn-game { background: #002288; color: white; border: none; padding: 8px 15px; font-size: 14px; font-weight: bold; border-radius: 4px; cursor: pointer; margin-right: 5px; }
         .btn-submit { background: linear-gradient(to bottom, #ffb347, #ff9f1a); color: #333333; border: 1px solid #e67e22; padding: 8px 18px; font-size: 14px; font-weight: bold; border-radius: 4px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
@@ -62,11 +62,11 @@
             <div class="custom-select-wrapper">
                 <select id="weekday" onchange="updateCourseOptions()" disabled>
                     <option value="" disabled selected></option>
-                    <option value="Monday">วันจันทร์</option>
-                    <option value="Tuesday">วันอังคาร</option>
-                    <option value="Wednesday">วันพุธ</option>
-                    <option value="Thursday">วันพฤหัสบดี</option>
-                    <option value="Friday">วันศุกร์</option>
+                    <option value="Monday">วันจันทร์ (Monday)</option>
+                    <option value="Tuesday">วันอังคาร (Tuesday)</option>
+                    <option value="Wednesday">วันพุธ (Wednesday)</option>
+                    <option value="Thursday">วันพฤหัสบดี (Thursday)</option>
+                    <option value="Friday">วันศุกร์ (Friday)</option>
                 </select>
             </div>
         </div>
@@ -106,20 +106,99 @@
     </div>
 
     <script>
-        // ลิงก์ API เชื่อมตรงเข้าสู่ Google Sheets
+        // ลิงก์ API เชื่อมตรงเข้าสู่ Google Sheets ตัวเดิมของพี่
         const API_URL = "https://sheetdb.io/api/v1/29rt4zja5oxhh";
 
         const courseData = {
-            'Monday': ["เปิดโลกนวัตกรรมสุดท้าทายกับการเรียนหุ่นยนต์ VEXIQ","วิทยาการคำนวณและพื้นฐาน Coding","คณิตศาสตร์คิดเร็วและเกมคำนวณ (Speed Math)","ศิลปะประดิษฐ์และงานฝีมือเชิงพาณิชย์","การดูแลสุขภาพและการปฐมพยาบาลเบื้องต้น","ดาราศาสตร์และเทคโนโลยีอวกาศเบื้องต้น","พื้นฐานการเขียนโปรแกรมด้วยภาษา Python","การคิดเชิงออกแบบและการแก้ปัญหา (Design Thinking)","วรรณกรรมท้องถิ่นและประวัติศาสตร์ล้านนา","ความรู้เท่าทันสื่อและข่าวสารยุคดิจิทัล","ทักษะชีวิตและการจัดการความเครียดในวัยรุ่น","การพูดเพื่อการโน้มน้าวใจและการโต้วาที","เกษตรกรรมเมืองและการปลูกพืชไร้ดินเบื้องต้น","สิ่งแวดล้อมศึกษาและการจัดการขยะรอบตัว","พลังงานทดแทนและนวัตกรรมสีเขียวสำหรับอนาคต"],
-            'Tuesday': ["ฟุตซอล MONTFORT","บาสเกตบอลชายยอดนักชู้ต","แบดมินตันเพื่อการแข่งขันและการออกกำลังกาย","เทเบิลเทนนิสและทักษะการสะท้อนกลับขั้นสูง","ว่ายน้ำเพื่อการกู้ชีพและการพัฒนาสรีระ","วอลเลย์บอลขั้นพื้นฐานและการเล่นเป็นทีม","หมากรุกไทยและกลยุทธ์ตารางกระดาน","กรีฑาและวิทยาศาสตร์การวิ่งเบื้องต้น","ยิมนาสติกพื้นฐานและการยืดเหยียดกล้ามเนื้อ","ศิลปะการป้องกันตัวและยูโดขั้นต้น","แฮนด์บอลสนุกคิดและทักษะการเคลื่อนไหว","สปอร์ตพจนานุกรมและศัพท์อังกฤษการกีฬา","โยคะเพื่อสมาธิและการปรับสมดุลร่างกาย","ผู้นำนันทนาการและกิจกรรมค่ายจำลอง","การวิเคราะห์แผนการเล่นและสถิติกีฬาสากล"],
-            'Wednesday': ["ดนตรีสากลร่วมสมัย (Pop-Rock Band)","ศิลปะการออกแบบและวาดภาพการ์ตูนคอมมิก","การขับร้องประสานเสียงระดับโรงเรียน","ถ่ายภาพดิจิทัลและการจัดแสงเบื้องต้นด้วยสมาร์ทโฟน","นาฏศิลป์และการสื่อสารวัฒนธรรมร่วมสมัย","ดนตรีไทยและเครื่องสายประยุกต์","ประติมากรรมและการปั้นโมเดลสามมิติด้วยดิน","ทฤษฎีดนตรีสากลและพื้นฐานการแกะโน้ต","จิตรกรรมสีน้ำและเทคนิคการระบายสีทิวทัศน์","การออกแบบกราฟิกเบื้องต้นด้วย Canva","ภาพยนตร์ศึกษาและการเขียนบทหนังสั้น","การแสดงเบื้องต้นและการเข้าสังคมสร้างสรรค์","วงดนตรีโยธวาทิตและเครื่องเป่าขั้นต้น","ศิลปะการพับกระดาษและโอริกามิสร้างสรรค์","สตรีทแดนซ์และพื้นฐานการเต้นบีบอย/ฮิปฮอป"],
-            'Thursday': ["E-SPORT Gaming & Team Management","บอร์ดเกมเพื่อการฝึกคิดเชิงกลยุทธ์และจิตวิทยา","ภาษาญี่ปุ่นพื้นฐานและบทสนทนาในชีวิตประจำวัน","ภาษาจีนเพื่อการสื่อสารและการพาณิชย์ย่อย","ภาษาเกาหลีเบื้องต้นและวัฒนธรรมสมัยนิยม","ภาษาอังกฤษผ่านเพลงสากลและภาพยนตร์ยอดนิยม","ภาษาฝรั่งเศสเบื้องต้นเพื่อการเดินทางและการท่องเที่ยว","ภาษาเยอรมันสนุกคิดและวัฒนธรรมยุโรป","การเขียนเชิงสร้างสรรค์และการเล่าเรื่อง (Storytelling)","ทักษะการสื่อสารข้ามวัฒนธรรมในยุคโลกาภิวัตน์","การแปลภาษาเบื้องต้นและคำศัพท์ร่วมสมัย","วรรณคดีเปรียบเทียบและการวิเคราะห์ตัวละคร","ภาษาและวัฒนธรรมอาเซียนเพื่อการเชื่อมโยง","การอ่านจับใจความเร็วสูงและการสรุปความอัจฉริยะ","กลยุทธ์การเรียนภาษาต่างประเทศด้วยตนเองผ่านแอปพลิเคชัน"],
-            'Friday': ["Figma + AI : เปลี่ยนไอเดียเป็นแอพจริงในพริบตา","การสร้างสรรค์ Content Creator และจริยธรรมสื่อดิจิทัล","วิทยาศาสตร์การประกอบอาหารและเบเกอรี่เบื้องต้น","การเพาะเลี้ยงและการอนุรักษ์พันธุกรรมพืชท้องถิ่น","รอบรู้เรื่องการออมและการลงทุนฉบับเยาวชนสตาร์ทอัพ","การเขียนโค้ดและพัฒนาเว็บเพจเบื้องต้นด้วย HTML/CSS","ปัญญาประดิษฐ์ (AI) และจริยธรรมการใช้งานในชีวิตประจำวัน","การสร้างโมเดลจำลอง 3D และเครื่องพิมพ์สามมิติ","วิทยาศาสตร์ในครัวเรือนและการทำผลิตภัณฑ์เคมีใช้เอง","พื้นฐานการเป็นบล็อกเกอร์ท่องเที่ยวและรีวิวสินค้า","การจัดการเงินส่วนบุคคลและภาษีน่ารู้สำหรับวัยรุ่น","โครงงานวิทยาศาสตร์และนวัตกรรมเพื่อชุมชน","การตลาดดิจิทัลและการซื้อขายสินค้าออนไลน์ขั้นต้น","เครื่องมือสืบค้นข้อมูลและเทคนิคสารสนเทศขั้นสูง","การวิเคราะห์ข้อมูลเบื้องต้นด้วยโปรแกรมตารางคำนวณ (Excel)"]
+            'Monday': [
+                "เปิดโลกนวัตกรรมสุดท้าทายกับการเรียนหุ่นยนต์ VEXIQ Robotics",
+                "วิทยาการคำนวณและพื้นฐาน Coding (Computer Science)",
+                "คณิตศาสตร์คิดเร็วและเกมคำนวณ (Speed Math Challenge)",
+                "ศิลปะประดิษฐ์และงานฝีมือเชิงพาณิชย์ (Commercial Arts & Crafts)",
+                "การดูแลสุขภาพและการปฐมพยาบาลเบื้องต้น (First Aid & Healthcare)",
+                "ดาราศาสตร์และเทคโนโลยีอวกาศเบื้องต้น (Introduction to Astronomy)",
+                "พื้นฐานการเขียนโปรแกรมด้วยภาษา Python (Python Programming Basis)",
+                "การคิดเชิงออกแบบและการแก้ปัญหา (Design Thinking & Problem Solving)",
+                "วรรณกรรมท้องถิ่นและประวัติศาสตร์ล้านนา (Lanna History & Literature)",
+                "ความรู้เท่าทันสื่อและข่าวสารยุคดิจิทัล (Digital Media Literacy)",
+                "ทักษะชีวิตและการจัดการความเครียดในวัยรุ่น (Stress Management)",
+                "การพูดเพื่อการโน้มน้าวใจและการโต้วาที (Persuasive Public Speaking)",
+                "เกษตรกรรมเมืองและการปลูกพืชไร้ดินเบื้องต้น (Hydroponics Urban Farming)",
+                "สิ่งแวดล้อมศึกษาและการจัดการขยะรอบตัว (Environmental Waste Management)",
+                "พลังงานทดแทนและนวัตกรรมสีเขียวสำหรับอนาคต (Green Innovation for Future)"
+            ],
+            'Tuesday': [
+                "ฟุตซอล MONTFORT (Indoor Futsal Training)",
+                "บาสเกตบอลชายยอดนักชู้ต (Advanced Basketball Skills)",
+                "แบดมินตันเพื่อการแข่งขันและการออกกำลังกาย (Competitive Badminton)",
+                "เทเบิลเทนนิสและทักษะการสะท้อนกลับขั้นสูง (Advanced Table Tennis)",
+                "ว่ายน้ำเพื่อการกู้ชีพและการพัฒนาสรีระ (Lifesaving & Swimming Skills)",
+                "วอลเลย์บอลขั้นพื้นฐานและการเล่นเป็นทีม (Basic Volleyball Teamwork)",
+                "หมากรุกไทยและกลยุทธ์ตารางกระดาน (Thai Chess Strategy Game)",
+                "กรีฑาและวิทยาศาสตร์การวิ่งเบื้องต้น (Running Science & Athletics)",
+                "ยิมนาสติกพื้นฐานและการยืดเหยียดกล้ามเนื้อ (Basic Gymnastics)",
+                "ศิลปะการป้องกันตัวและยูโดขั้นต้น (Martial Arts & Basic Judo)",
+                "แฮนด์บอลสนุกคิดและทักษะการเคลื่อนไหว (Handball & Movement Skills)",
+                "สปอร์ตพจนานุกรมและศัพท์อังกฤษการกีฬา (English for Sports Vocabulary)",
+                "โยคะเพื่อสมาธิและการปรับสมดุลร่างกาย (Yoga for Mindfulness & Balance)",
+                "ผู้นำนันทนาการและกิจกรรมค่ายจำลอง (Recreation Leader & Camping)",
+                "การวิเคราะห์แผนการเล่นและสถิติกีฬาสากล (Sports Data Analytics)"
+            ],
+            'Wednesday': [
+                "ดนตรีสากลร่วมสมัย (Pop-Rock Band Performance)",
+                "ศิลปะการออกแบบและวาดภาพการ์ตูนคอมมิก (Comic & Cartoon Drawing)",
+                "การขับร้องประสานเสียงระดับโรงเรียน (School Chorus & Vocal Ensemble)",
+                "ถ่ายภาพดิจิทัลและการจัดแสงเบื้องต้นด้วยสมาร์ทโฟน (Smartphone Photography)",
+                "นาฏศิลป์และการสื่อสารวัฒนธรรมร่วมสมัย (Contemporary Thai Dance)",
+                "ดนตรีไทยและเครื่องสายประยุกต์ (Applied Thai Traditional Music)",
+                "ประติมากรรมและการปั้นโมเดลสามมิติด้วยดิน (3D Clay Modeling)",
+                "ทฤษฎีดนตรีสากลและพื้นฐานการแกะโน้ต (Western Music Theory)",
+                "จิตรกรรมสีน้ำและเทคนิคการระบายสีทิวทัศน์ (Landscape Watercolor Painting)",
+                "การออกแบบกราฟิกเบื้องต้นด้วย Canva (Basic Graphic Design with Canva)",
+                "ภาพยนตร์ศึกษาและการเขียนบทหนังสั้น (Film Studies & Short Scriptwriting)",
+                "การแสดงเบื้องต้นและการเข้าสังคมสร้างสรรค์ (Acting & Creative Drama)",
+                "วงดนตรีโยธวาทิตและเครื่องเป่าขั้นต้น (Marching Band & Woodwind Basics)",
+                "ศิลปะการพับกระดาษและโอริกามิสร้างสรรค์ (Creative Origami Art)",
+                "สตรีทแดนซ์และพื้นฐานการเต้นบีบอย/ฮิปฮอป (Street Dance & Hip-Hop Basics)"
+            ],
+            'Thursday': [
+                "E-SPORT Gaming & Competitive Team Management Tournament",
+                "บอร์ดเกมเพื่อการฝึกคิดเชิงกลยุทธ์และจิตวิทยา (Strategic Board Games)",
+                "ภาษาญี่ปุ่นพื้นฐานและบทสนทนาในชีวิตประจำวัน (Basic Japanese Conversation)",
+                "ภาษาจีนเพื่อการสื่อสารและการพาณิชย์ย่อย (Chinese for Communication)",
+                "ภาษาเกาหลีเบื้องต้นและวัฒนธรรมสมัยนิยม (Basic Korean & K-Pop Culture)",
+                "ภาษาอังกฤษผ่านเพลงสากลและภาพยนตร์ยอดนิยม (English via Pop Music & Movies)",
+                "ภาษาฝรั่งเศสเบื้องต้นเพื่อการเดินทางและการท่องเที่ยว (Basic French for Travel)",
+                "ภาษาเยอรมันสนุกคิดและวัฒนธรรมยุโรป (Introductory German & Culture)",
+                "การเขียนเชิงสร้างสรรค์และการเล่าเรื่อง (Creative Storytelling Techniques)",
+                "ทักษะการสื่อสารข้ามวัฒนธรรมในยุคโลกาภิวัตน์ (Cross-Cultural Communication)",
+                "การแปลภาษาเบื้องต้นและคำศัพท์ร่วมสมัย (Introduction to Translation)",
+                "วรรณคดีเปรียบเทียบและการวิเคราะห์ตัวละคร (Comparative Literature & Characters)",
+                "ภาษาและวัฒนธรรมอาเซียนเพื่อการเชื่อมโยง (ASEAN Languages and Cultures)",
+                "การอ่านจับใจความเร็วสูงและการสรุปความอัจฉริยะ (Speed Reading & Active Summary)",
+                "กลยุทธ์การเรียนภาษาต่างประเทศด้วยตนเองผ่านแอปพลิเคชัน (Autonomous Language Learning)"
+            ],
+            'Friday': [
+                "Figma + AI : UI/UX Design and Prototype Innovation",
+                "การสร้างสรรค์ Content Creator และจริยธรรมสื่อดิจิทัล (Digital Content Creator)",
+                "วิทยาศาสตร์การประกอบอาหารและเบเกอรี่เบื้องต้น (Culinary Arts & Bakery Science)",
+                "การเพาะเลี้ยงและการอนุรักษ์พันธุกรรมพืชท้องถิ่น (Local Plant Tissue Culture)",
+                "รอบรู้เรื่องการออมและการลงทุนฉบับเยาวชนสตาร์ทอัพ (Youth Financial & Investment)",
+                "การเขียนโค้ดและพัฒนาเว็บเพจเบื้องต้นด้วย HTML/CSS (Web Development Basics)",
+                "ปัญญาประดิษฐ์ (AI) และจริยธรรมการใช้งานในชีวิตประจำวัน (Artificial Intelligence Ethics)",
+                "การสร้างโมเดลจำลอง 3D และเครื่องพิมพ์สามมิติ (3D Modeling & 3D Printing)",
+                "วิทยาศาสตร์ในครัวเรือนและการทำผลิตภัณฑ์เคมีใช้เอง (Household Chemical Science)",
+                "พื้นฐานการเป็นบล็อกเกอร์ท่องเที่ยวและรีวิวสินค้า (Travel Blogger & Product Review)",
+                "การจัดการเงินส่วนบุคคลและภาษีน่ารู้สำหรับวัยรุ่น (Personal Finance & Taxes for Teens)",
+                "โครงงานวิทยาศาสตร์และนวัตกรรมเพื่อชุมชน (Science Project for Community Innovation)",
+                "การตลาดดิจิทัลและการซื้อขายสินค้าออนไลน์ขั้นต้น (Digital Marketing & E-Commerce)",
+                "เครื่องมือสืบค้นข้อมูลและเทคนิคสารสนเทศขั้นสูง (Advanced Search Engine Techniques)",
+                "การวิเคราะห์ข้อมูลเบื้องต้นด้วยโปรแกรมตารางคำนวณ (Data Analysis via Microsoft Excel)"
+            ]
         };
-        const weekdayTH = { 'Monday': "วันจันทร์", 'Tuesday': "วันอังคาร", 'Wednesday': "วันพุธ", 'Thursday': "วันพฤหัสบดี", 'Friday': "วันศุกร์" };
+        const weekdayTH = { 'Monday': "วันจันทร์ (Monday)", 'Tuesday': "วันอังคาร (Tuesday)", 'Wednesday': "วันพุธ (Wednesday)", 'Thursday': "วันพฤหัสบดี (Thursday)", 'Friday': "วันศุกร์ (Friday)" };
         let startTime, timerInterval, isGameRunning = false, currentTargetDay = "", currentTargetCourse = "";
 
-        // ฟังก์ชันดึงคะแนนออนไลน์จาก Google Sheets
         function fetchLeaderboard() {
             fetch(API_URL)
             .then(res => res.json())
@@ -141,10 +220,8 @@
                     return;
                 }
 
-                // เรียงเวลาจากน้อยไปมาก (เร็วที่สุดขึ้นก่อน)
                 scores.sort((a, b) => a.time - b.time);
 
-                // แสดงผล Top 15 บนกระดาน
                 scores.slice(0, 15).forEach((score, index) => {
                     let tr = document.createElement("tr");
                     if (index === 0) tr.className = "rank-1";
@@ -153,7 +230,7 @@
                 });
             })
             .catch(err => {
-                document.getElementById("leaderboard-rows").innerHTML = '<tr><td colspan="3" class="no-data">加 โหลดข้อมูลล้มเหลว กรุณารีเฟรชหน้าเว็บอีกครั้ง</td></tr>';
+                document.getElementById("leaderboard-rows").innerHTML = '<tr><td colspan="3" class="no-data">โหลดข้อมูลล้มเหลว กรุณารีเฟรชหน้าเว็บอีกครั้ง</td></tr>';
             });
         }
 
@@ -175,7 +252,7 @@
             const days = Object.keys(courseData);
             currentTargetDay = days[Math.floor(Math.random() * days.length)];
             currentTargetCourse = courseData[currentTargetDay][Math.floor(Math.random() * courseData[currentTargetDay].length)];
-            document.getElementById("mission-target").innerHTML = `เป้าหมาย: หา <span style="color:#002060;">${weekdayTH[currentTargetDay]}</span> วิชา <span style="color:#002060;">"${currentTargetCourse}"</span>`;
+            document.getElementById("mission-target").innerHTML = `เป้าหมาย: หา <span style="color:#002060;">${weekdayTH[currentTargetDay]}</span><br>วิชา <span style="color:#c00000; font-size:16px;">"${currentTargetCourse}"</span>`;
             document.getElementById("weekday").disabled = false; document.getElementById("course").disabled = false; document.getElementById("btn-save").disabled = false;
             document.getElementById("weekday").value = ""; document.getElementById("course").innerHTML = '<option value="" disabled selected>-- กรุณาเลือกวันก่อน --</option>';
             document.getElementById("result_list").innerHTML = ""; document.getElementById("response_txt").innerHTML = "";
@@ -202,7 +279,6 @@
             
             const pName = document.getElementById("player-name").value.trim();
             
-            // ส่งข้อมูลบันทึกลง Google Sheets ทันที
             fetch(API_URL, {
                 method: "POST",
                 headers: {
